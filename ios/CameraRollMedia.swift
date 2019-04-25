@@ -27,9 +27,16 @@ class RNCameraRollMedia: NSObject {
      - parameter completion: Called in the background when all albums were retrieved.
      */
     
+    enum PHAssetMediaTypeEnum: String
+    {
+        case photos = "one"
+        case videos = "two"
+    }
+    
+    
     
     @objc
-    public func getAlbums(_ resolve: @escaping RCTPromiseResolveBlock,
+    public func getAlbums(_ assetType: String, resolve: @escaping RCTPromiseResolveBlock,
                           rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
         var subtypes: [PHAssetCollectionSubtype];
         if #available(iOS 9.0, *) {
@@ -38,27 +45,29 @@ class RNCameraRollMedia: NSObject {
                 .smartAlbumPanoramas,
                 .smartAlbumScreenshots,
                 .smartAlbumSelfPortraits,
-                .smartAlbumVideos,
+              .smartAlbumVideos,
                 .smartAlbumRecentlyAdded,
                 .smartAlbumSelfPortraits,
                 .smartAlbumUserLibrary,
-                .smartAlbumSlomoVideos,
+//                .smartAlbumSlomoVideos,
                 .smartAlbumBursts
             ]
         } else {
             subtypes = [
                 .smartAlbumFavorites,
                 .smartAlbumPanoramas,
-                .smartAlbumVideos,
+              .smartAlbumVideos,
                 .smartAlbumRecentlyAdded,
                 .smartAlbumUserLibrary,
-                .smartAlbumSlomoVideos,
+//                .smartAlbumSlomoVideos,
                 .smartAlbumBursts
             ]
         }
-        
+//        print("assetType")
+//        print(assetType)
         var AlbumsArray : [Dictionary<String,String>] = []
         var AlbumsTitlesArray : [String] = []
+//        var MediaType = [PHAssetMediaType]()
         DispatchQueue.global(qos: .background).async() {
             let fetchOptions = PHFetchOptions()
             fetchOptions.sortDescriptors = [NSSortDescriptor(key: "localizedTitle", ascending: true)]
@@ -74,6 +83,7 @@ class RNCameraRollMedia: NSObject {
                             "count": String(album.estimatedAssetCount),
                             "type": String(album.assetCollectionType.rawValue),
                             "smart": "false",
+                            "assetType": assetType ,
                             ]
                         if (album.localizedTitle == "Camera Roll" || album.localizedTitle == "All Photos") {
                             AlbumsArray.insert(data, at: 0)
@@ -93,6 +103,7 @@ class RNCameraRollMedia: NSObject {
                         "count": String(collection.photosCount),
                         "type": String(subtype.rawValue),
                         "smart": "true",
+                        "assetType": assetType
                         ]
                     if (collection.localizedTitle == "Camera Roll" || collection.localizedTitle == "All Photos") {
                         AlbumsArray.insert(data, at: 0)
@@ -109,58 +120,62 @@ class RNCameraRollMedia: NSObject {
     
     
     @objc
-    public func fetchAlbumPhotos(_ params: NSDictionary, resolve: @escaping RCTPromiseResolveBlock,
+    public func fetchAssets(_ params: NSDictionary, resolve: @escaping RCTPromiseResolveBlock,
                                  rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
         print("fetchAlbumPhotos")
         print(params)
         var NoMore = false;
-        var lastURLCreated = String();
+        var Count = "60";
+        var LastAssetUnix = Double();
         guard let AlbumName = params["title"] as? String else {return}
         guard let AlbumSubType = params["type"] as? String else {return}
         let AlbumType = ((params["smart"] as? String == "true") ? true : false)
+        guard let assetType = params["assetType"] as? String else {return}
         if params["after"] != nil  {
-            lastURLCreated = params["after"] as! String
+            LastAssetUnix = (params["after"] as?  Double)!
         }
-        var AssetsArray : [Dictionary<String,String>] = []
+        if params["count"] != nil  {
+            Count = params["after"] as? String ?? "60"
+        }
+        var AssetsArray : [Dictionary<String,Any>] = []
         let fetchOptions = PHFetchOptions()
         if(!AlbumType){
             fetchOptions.predicate = NSPredicate(format: "title = %@", AlbumName)
         }
-        
         DispatchQueue.global(qos: .background).async() {
-            let fetchResult: PHFetchResult = PHAssetCollection.fetchAssetCollections(with: (AlbumType ? .smartAlbum : .album), subtype: PHAssetCollectionSubtype(rawValue: Int(AlbumSubType) ?? 1 )!, options: (AlbumType ? nil : fetchOptions))
+            let fetchResult: PHFetchResult = PHAssetCollection.fetchAssetCollections(with: (AlbumType ? .smartAlbum : .album), subtype: PHAssetCollectionSubtype(rawValue: Int(AlbumSubType) ?? 209) ?? .any, options:  fetchOptions)
             print(1)
-            print(fetchResult.count)
-            
-            let start = DispatchTime.now()
+//            let start = DispatchTime.now()
             fetchResult.enumerateObjects({ (object: AnyObject!, count: Int, stop: UnsafeMutablePointer) in
                 if object is PHAssetCollection {
                     let obj:PHAssetCollection = object as! PHAssetCollection
                     let fetchOptions = PHFetchOptions()
                     fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
                     if #available(iOS 9.0, *) {
-                        fetchOptions.fetchLimit = 60
+                        fetchOptions.fetchLimit = Int(Count) ?? 60
                     } else {
                         // Fallback on earlier version
                 
                     }
-                    if(!lastURLCreated.isEmpty) {
-                        print("lastURLCreated")
-                        print(lastURLCreated)
+                    if(LastAssetUnix > 0) {
                         print("filtred by date")
-                        print(lastURLCreated)
+                        print(LastAssetUnix)
                         //Date Formatter
-                        let formatter = DateFormatter()
-                        formatter.dateStyle = DateFormatter.Style.medium
-                        formatter.timeStyle = DateFormatter.Style.none
-                        let startDate = Date(timeIntervalSince1970: Double(lastURLCreated)!)
+                        let startDate = Date(timeIntervalSince1970: LastAssetUnix)
                         print("filtred by date")
-                        fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate < %@)", PHAssetMediaType.image.rawValue, startDate as NSDate)
-//                        fetchOptions.predicate = NSPredicate(format: "creationDate > %@ AND creationDate < %@", startDate as NSDate, endDate as NSDate)
-
+                        print(startDate)
+                        if(assetType == "videos"){
+                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate < %@)", PHAssetMediaType.video.rawValue, startDate as NSDate)
+                        } else {
+                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate < %@)", PHAssetMediaType.image.rawValue, startDate as NSDate)
+                        }
                     } else {
                         print("no filter by date")
-                        fetchOptions.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.image.rawValue)
+                        if(assetType == "videos"){
+                            fetchOptions.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.video.rawValue)
+                        } else {
+                            fetchOptions.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.image.rawValue)
+                        }
                     }
                     
                    
@@ -175,30 +190,39 @@ class RNCameraRollMedia: NSObject {
                         assets.enumerateObjects{(object: AnyObject!,count: Int, stop: UnsafeMutablePointer<ObjCBool>) in
                             if object is PHAsset{
                                 let asset = object as! PHAsset
-                                let newAlbum: [String: String] =
+                                let uri = "ph://\(asset.localIdentifier)"
+                                let width = String(asset.pixelWidth)
+                                let height = String(asset.pixelHeight)
+                                let created =  String(asset.creationDate!.timeIntervalSince1970)
+                                let duration =  String(asset.duration)
+                                let latitude = asset.location?.coordinate.latitude
+                                let longitude = asset.location?.coordinate.longitude
+                                let newAlbum : [String: Any] =
                                     [
-                                        "uri": "ph://\(asset.localIdentifier)",
-                                        "width": String(asset.pixelWidth),
-                                        "height": String(asset.pixelHeight),
-                                        "created":  String(asset.creationDate!.timeIntervalSince1970),
+                                        "uri": uri,
+                                        "width": width,
+                                        "height": height,
+                                        "created":  created,
+                                        "duration":  duration,
+                                        "location": [ "latitude": latitude,
+                                                      "longitude": longitude
+                                                    ]
                                         ]
                                 AssetsArray.append(newAlbum)
                                 if((assets.count - 1) == count && assets.count > 0 ){
-                                    //                                lastURLAsset = newAlbum["uri"]!
-                                    lastURLCreated = newAlbum["created"]!
+                                    LastAssetUnix = (asset.creationDate?.timeIntervalSince1970 ?? 0.0)
                                 }
                             }
+                           
+                        }
+                        if(assets.count < Int(Count)! ){
+                            NoMore = true
                         }
                     }
                   
                 }
             })
-            let end = DispatchTime.now()   // <<<<<<<<<<   end time
-            let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds // <<<<< Difference in nano seconds (UInt64)
-            let timeInterval = Double(nanoTime) / 1_000_000_000 // Technically could overflow for long running tests
-            print("Time to evaluate problem \(1): \(nanoTime) nanoseconds" )
-            print("Time to evaluate problem \(1): \(timeInterval) seconds")
-            resolve(["NoMore": NoMore, "lastAssetURL": lastURLCreated,  "assets":AssetsArray])
+            resolve(["NoMore": NoMore, "lastAssetUnix": LastAssetUnix,  "assets":AssetsArray])
         }
     }
     
