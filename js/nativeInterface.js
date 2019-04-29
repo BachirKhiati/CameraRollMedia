@@ -1,1 +1,1 @@
-export default require('react-native').NativeModules.RNCCameraRoll;
+export default require('react-native').NativeModules.RNCameraRollMedia;
