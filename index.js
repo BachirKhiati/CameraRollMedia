@@ -20,8 +20,8 @@ const ASSET_TYPE_OPTIONS = {
 
 export type GetAssetsParams = {
   title?: string,
-  type?: string,
-  smart?: string,
+  subType?: string,
+  smartAlbum?: string,
   count?: number,
   after?: number,
   assetType?: $Keys<typeof ASSET_TYPE_OPTIONS>

@@ -89,11 +89,15 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void fetchAssets(final ReadableMap params, final Promise promise) {
-        int first = params.getInt("count");
+        int first = params.hasKey("count") ? params.getInt("count") : 120;
         String after = params.hasKey("after") ? params.getString("after") : null;
         String assetType = params.hasKey("assetType") ? params.getString("assetType") : ASSET_TYPE_PHOTOS;
-
-
+        Log.d("DEBUG", "first");
+        Log.d("DEBUG", String.valueOf(first));
+        Log.d("DEBUG", "after");
+        Log.d("DEBUG", String.valueOf(after));
+        Log.d("DEBUG", "assetType");
+        Log.d("DEBUG", assetType);
         new GetMediaTask(
                 getReactApplicationContext(),
                 first,
@@ -149,7 +153,6 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                 );
                 return;
             }
-
             WritableMap response = new WritableNativeMap();
             ContentResolver resolver = mContext.getContentResolver();
             // using LIMIT in the sortOrder is not explicitly supported by the SDK (which does not support
@@ -284,11 +287,11 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                     int playableDuration = timeInMillisec / 1000;
                     node.putInt("duration", playableDuration);
 //                        String videoThumbnailURL = getThumbnailVideo(resolver, photoUri, id);
-                        String videoThumbnailURL = getThumbnailVideo(resolver, id);
-                        if (videoThumbnailURL != null) {
-                            Uri thumbnail = Uri.parse(videoThumbnailURL);
-                            node.putString("thumbnail", thumbnail.toString());
-                        }
+                    String videoThumbnailURL = getThumbnailVideo(resolver, id);
+                    if (videoThumbnailURL != null) {
+                        Uri thumbnail = Uri.parse(videoThumbnailURL);
+                        node.putString("thumbnail", thumbnail.toString());
+                    }
                 } catch (NumberFormatException e) {
                     FLog.e(
                             ReactConstants.TAG,
@@ -348,30 +351,22 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     };
 
 
-    static String getThumbnailVideo(ContentResolver resolver,long videoId)
-    {
+    static String getThumbnailVideo(ContentResolver resolver, long videoId) {
         String path = null;
-        String [] proj = {MediaStore.Video.Thumbnails._ID};
-        Log.d("DEBUG", "1");
-
+        String[] proj = {MediaStore.Video.Thumbnails._ID};
         Cursor c = resolver.query(MediaStore.Video.Thumbnails.EXTERNAL_CONTENT_URI,
-                proj, MediaStore.Video.Thumbnails.VIDEO_ID + "=" +videoId ,
+                proj, MediaStore.Video.Thumbnails.VIDEO_ID + "=" + videoId,
                 null, null);
         if (c != null && c.getCount() > 0) {
-            try{
-            c.moveToFirst();
-            Uri thumb = Uri.withAppendedPath(MediaStore.Video.Thumbnails.EXTERNAL_CONTENT_URI,c.getLong(0)+"");
-//            Log.d("DEBUG", "thumb");
-//            Log.d("DEBUG", thumb.toString());
-//            String thubmnailPath2 =  c.getString(c.getColumnIndexOrThrow(MediaStore.Video.Thumbnails.DATA));
-//            Log.d("DEBUG", thubmnailPath2);
-            path = thumb.toString();
+            try {
+                c.moveToFirst();
+                Uri thumb = Uri.withAppendedPath(MediaStore.Video.Thumbnails.EXTERNAL_CONTENT_URI, c.getLong(0) + "");
+                path = thumb.toString();
             } catch (java.lang.SecurityException ex) {
                 Log.d("DEBUG", "Error");
             }
         }
-        if(path == null){
-            Log.d("DEBUG", "2");
+        if (path == null) {
             path = getThumbnailVideo2(resolver, videoId);
         }
         return path;
@@ -414,42 +409,11 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
         } catch (java.lang.SecurityException ex) {
             ex.printStackTrace();
             Log.d("DEBUG", "Error");
-//            try {
-//                video = retriveVideoFrameFromVideo(uri.toString());
-//                path = Images.Media.insertImage(resolver, video, "Title", null);
-//                return path;
-//            } catch (Throwable throwable) {
-//                throwable.printStackTrace();
-//            }
             return null;
         }
 
 
         return path;
     }
-
-//    public static Bitmap retriveVideoFrameFromVideo(String videoPath) throws Throwable {
-//        Bitmap bitmap = null;
-//        MediaMetadataRetriever mediaMetadataRetriever = null;
-//        try {
-//            mediaMetadataRetriever = new MediaMetadataRetriever();
-//            if (Build.VERSION.SDK_INT >= 14)
-//                mediaMetadataRetriever.setDataSource(videoPath, new HashMap<String, String>());
-//            else
-//                mediaMetadataRetriever.setDataSource(videoPath);
-//            //   mediaMetadataRetriever.setDataSource(videoPath);
-//            bitmap = mediaMetadataRetriever.getFrameAtTime();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            throw new Throwable("Exception in retriveVideoFrameFromVideo(String videoPath)" + e.getMessage());
-//
-//        } finally {
-//            if (mediaMetadataRetriever != null) {
-//                mediaMetadataRetriever.release();
-//            }
-//        }
-//        return bitmap;
-//    }
-//
 
 }
