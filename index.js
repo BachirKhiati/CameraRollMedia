@@ -27,6 +27,15 @@ export type GetAssetsParams = {
   assetType?: $Keys<typeof ASSET_TYPE_OPTIONS>
 };
 
+export type GetSizeParams = {
+  uri?: string
+};
+export type PhotoSizeIdentifier = {
+  width: number,
+  height: number,
+};
+
+
 export type PhotoIdentifier = {
     uri: string,
     thumbnail?: string,
@@ -68,6 +77,19 @@ class CameraRollMedia {
     }
     return RNCameraRollMedia.fetchAssets(params);
   }
+
+  static getSize(params: GetSizeParams): Promise<PhotoSizeIdentifier> {
+    if (arguments.length > 1) {
+      console.warn(
+        'CameraRollMedia.getSize(tag, success, error) is deprecated.  Use the returned Promise instead',
+      );
+      let successCallback = arguments[1];
+      const errorCallback = arguments[2] || (() => {});
+      RNCameraRollMedia.getSize(params).then(successCallback, errorCallback);
+    }
+    return RNCameraRollMedia.getSize(params);
+  }
+  
 }
 
 module.exports = CameraRollMedia;

@@ -1,6 +1,8 @@
 
 package com.reactlibrary;
 
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -38,7 +40,9 @@ import com.facebook.react.common.ReactConstants;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,14 +96,10 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
         int first = params.hasKey("count") ? params.getInt("count") : 120;
         String after = params.hasKey("after") ? params.getString("after") : null;
         String assetType = params.hasKey("assetType") ? params.getString("assetType") : ASSET_TYPE_PHOTOS;
-        Log.d("DEBUG", "first");
-        Log.d("DEBUG", String.valueOf(first));
-        Log.d("DEBUG", "after");
-        Log.d("DEBUG", String.valueOf(after));
-        Log.d("DEBUG", "assetType");
-        Log.d("DEBUG", assetType);
+        String albumName = params.hasKey("title") ? params.getString("title") : null;
         new GetMediaTask(
                 getReactApplicationContext(),
+                albumName,
                 first,
                 after,
                 assetType,
@@ -107,9 +107,48 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                 .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
+    @ReactMethod
+    public void getSize(String uri, final Promise promise) {
+        try {
+            Uri u = Uri.parse(uri);
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+
+            int height = 0;
+            int width = 0;
+
+            if (uri.startsWith("file://")) {
+                BitmapFactory.decodeFile(u.getPath(), options);
+                height = options.outHeight;
+                width = options.outWidth;
+            } else {
+                URL url = new URL(uri);
+                Bitmap bitmap = BitmapFactory.decodeStream((InputStream) url.getContent());
+                height = bitmap.getHeight();
+                width = bitmap.getWidth();
+            }
+
+            WritableMap map = Arguments.createMap();
+
+            map.putInt("height", height);
+            map.putInt("width", width);
+
+            promise.resolve(map);
+        } catch (Exception e) {
+            promise.reject(e);
+        }
+    }
+
+    @ReactMethod
+    public void getAlbums(final Promise promise) {
+        new GetAlbums(getReactApplicationContext(), promise).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+
 
     private static class GetMediaTask extends GuardedAsyncTask<Void, Void> {
         private final Context mContext;
+        private final String mAlbumName;
         private final int mFirst;
         private final @Nullable
         String mAfter;
@@ -118,12 +157,14 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
         private GetMediaTask(
                 ReactContext context,
+                String  AlbumName,
                 int first,
                 @Nullable String after,
                 String assetType,
                 Promise promise) {
             super(context);
             mContext = context;
+            mAlbumName = AlbumName;
             mFirst = first;
             mAfter = after;
             mPromise = promise;
@@ -134,6 +175,10 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
         protected void doInBackgroundGuarded(Void... params) {
             StringBuilder selection = new StringBuilder("1");
             List<String> selectionArgs = new ArrayList<>();
+            if (!TextUtils.isEmpty(mAlbumName)) {
+                selection.append(" AND " + SELECTION_BUCKET);
+                selectionArgs.add(mAlbumName);
+            }
             if (!TextUtils.isEmpty(mAfter)) {
                 selection.append(" AND " + SELECTION_DATE_TAKEN);
                 selectionArgs.add(mAfter);
@@ -411,8 +456,6 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
             Log.d("DEBUG", "Error");
             return null;
         }
-
-
         return path;
     }
 
