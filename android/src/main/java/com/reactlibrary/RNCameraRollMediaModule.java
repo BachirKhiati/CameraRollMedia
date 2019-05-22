@@ -6,6 +6,7 @@ import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import android.media.ExifInterface;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -119,14 +120,31 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
             if (uri.startsWith("file://")) {
                 BitmapFactory.decodeFile(u.getPath(), options);
-                height = options.outHeight;
-                width = options.outWidth;
+                int orientation= CheckRotation(u);
+                if(orientation == 90 || orientation == 270){
+                    height = options.outWidth;
+                    width = options.outHeight;
+                } else {
+                    height = options.outHeight;
+                    width = options.outWidth;
+                }
+
             } else {
                 URL url = new URL(uri);
                 Bitmap bitmap = BitmapFactory.decodeStream((InputStream) url.getContent());
-                height = bitmap.getHeight();
-                width = bitmap.getWidth();
+                int orientation= CheckRotation(u);
+                if(orientation == 90 || orientation == 270){
+                    height = bitmap.getWidth();
+                    width = bitmap.getHeight();
+                } else {
+                    height = bitmap.getHeight();
+                    width = bitmap.getWidth();
+                }
+
             }
+
+
+
 
             WritableMap map = Arguments.createMap();
 
@@ -457,6 +475,29 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
             return null;
         }
         return path;
+    }
+
+    static int CheckRotation(Uri uri){
+        try {
+                ExifInterface ei = new ExifInterface(uri.getPath());
+                return getOrientation(ei);
+        } catch (Exception ignored) { }
+        return 0;
+    }
+
+
+    public static int getOrientation(ExifInterface exif) {
+        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                return 90;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                return 180;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                return 270;
+            default:
+                return 0;
+        }
     }
 
 }
