@@ -14,9 +14,7 @@
 RCT_EXTERN_METHOD(getEvent:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(getAlbums:
-                  (NSString *) assetType
-                  resolve:(RCTPromiseResolveBlock)resolve
+RCT_EXTERN_METHOD(getAlbums:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(fetchAssets:

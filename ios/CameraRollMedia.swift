@@ -37,7 +37,7 @@ class RNCameraRollMedia: NSObject {
     
     
     @objc
-    public func getAlbums(_ assetType: String, resolve: @escaping RCTPromiseResolveBlock,
+    public func getAlbums(_ resolve: @escaping RCTPromiseResolveBlock,
                           rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
         let subtypes: [PHAssetCollectionSubtype] = [
             .smartAlbumFavorites,
@@ -71,7 +71,7 @@ class RNCameraRollMedia: NSObject {
                             "count": count,
                             "subType": type,
                             "smartAlbum": "false",
-                            "assetType": assetType ,
+                            "assetType": "Photos"
                             ]
                         if (album.localizedTitle == "Camera Roll" || album.localizedTitle == "All Photos") {
                             AlbumsArray.insert(data, at: 0)
@@ -94,7 +94,7 @@ class RNCameraRollMedia: NSObject {
                         "count": count,
                         "subType": type,
                         "smartAlbum": "true",
-                        "assetType": assetType
+                        "assetType": "Photos"
                     ]
                     if (collection.localizedTitle == "Camera Roll" || collection.localizedTitle == "All Photos") {
                         AlbumsArray.insert(data, at: 0)

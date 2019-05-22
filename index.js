@@ -66,13 +66,16 @@ export type PhotoIdentifiersPage = {
 class CameraRollMedia {
   static AssetTypeOptions = ASSET_TYPE_OPTIONS;
 
+
+  static getAlbums (): Promise<PhotoIdentifiersPage> {
+    if (arguments.length > 1) {
+      RNCameraRollMedia.getAlbums().then(successCallback, errorCallback);
+    }
+    return RNCameraRollMedia.getAlbums();
+  }
+
   static fetchAssets(params: GetAssetsParams): Promise<PhotoIdentifiersPage> {
     if (arguments.length > 1) {
-      console.warn(
-        'CameraRollMedia.fetchAssets(tag, success, error) is deprecated.  Use the returned Promise instead',
-      );
-      let successCallback = arguments[1];
-      const errorCallback = arguments[2] || (() => {});
       RNCameraRollMedia.fetchAssets(params).then(successCallback, errorCallback);
     }
     return RNCameraRollMedia.fetchAssets(params);
@@ -80,11 +83,6 @@ class CameraRollMedia {
 
   static getSize(params: GetSizeParams): Promise<PhotoSizeIdentifier> {
     if (arguments.length > 1) {
-      console.warn(
-        'CameraRollMedia.getSize(tag, success, error) is deprecated.  Use the returned Promise instead',
-      );
-      let successCallback = arguments[1];
-      const errorCallback = arguments[2] || (() => {});
       RNCameraRollMedia.getSize(params).then(successCallback, errorCallback);
     }
     return RNCameraRollMedia.getSize(params);
