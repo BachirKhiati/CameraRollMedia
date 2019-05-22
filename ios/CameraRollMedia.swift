@@ -44,11 +44,9 @@ class RNCameraRollMedia: NSObject {
             .smartAlbumPanoramas,
             .smartAlbumScreenshots,
             .smartAlbumSelfPortraits,
-            //                .smartAlbumVideos,
             .smartAlbumRecentlyAdded,
             .smartAlbumSelfPortraits,
             .smartAlbumUserLibrary,
-            //                .smartAlbumSlomoVideos,
             .smartAlbumBursts
         ]
         var AlbumsArray : [Dictionary<String,Any>] = []
@@ -147,7 +145,7 @@ class RNCameraRollMedia: NSObject {
         if let count = params["count"]  as? Int  {
             Count = count
         } else {
-            Count = 120
+            Count = 200
         }
         /////////##########################
         var AssetsArray : [Dictionary<String,Any>] = []
@@ -157,17 +155,9 @@ class RNCameraRollMedia: NSObject {
         if(!AlbumType && !AlbumName.isEmpty){
             fetchOptions.predicate = NSPredicate(format: "title = %@", AlbumName)
         }
-        //        print( AlbumName)
-        //      print( AlbumSubType)
-        //      print( AlbumType)
-        //      print( AssetType )
-        //      print( LastAssetUnix )
-        //     print( Count)
-        //      print( NoMore )
-        //        print( fetchOptions )
         
         DispatchQueue.global(qos: .background).async() {
-            let fetchResult: PHFetchResult = PHAssetCollection.fetchAssetCollections(with: (AlbumType ? .smartAlbum : .album), subtype: PHAssetCollectionSubtype(rawValue: AlbumSubType ?? 209 ) ?? .any, options:  fetchOptions)
+            let fetchResult: PHFetchResult = PHAssetCollection.fetchAssetCollections(with: (AlbumType ? .smartAlbum : .album), subtype: PHAssetCollectionSubtype(rawValue: AlbumSubType ) ?? .any, options:  fetchOptions)
             fetchResult.enumerateObjects({ (object: AnyObject!, count: Int, stop: UnsafeMutablePointer) in
                 if object is PHAssetCollection {
                     let obj:PHAssetCollection = object as! PHAssetCollection
@@ -189,7 +179,6 @@ class RNCameraRollMedia: NSObject {
                         }
                     }
                     
-                    
                     AssetsArray = []
                     let assets = PHAsset.fetchAssets(in: obj, options: fetchOptions)
                     if(assets.count == 0) {
@@ -198,22 +187,23 @@ class RNCameraRollMedia: NSObject {
                         NoMore = false
                         assets.enumerateObjects{(obj: AnyObject!,count: Int, stop: UnsafeMutablePointer<ObjCBool>) in
                             if obj is PHAsset{
-                                var originalName = String()
-                                var mimeType = String()
-                                var assetLocalIdentifier = String()
+                                var uri = String()
                                 let asset = obj as! PHAsset
+                                let assetLocalIdentifier = String(asset.localIdentifier)
                                 let width = Int(asset.pixelWidth)
                                 let height = Int(asset.pixelHeight)
                                 let created =  Double(asset.creationDate!.timeIntervalSince1970)
                                 let duration =  Double(asset.duration)
                                 let latitude = asset.location?.coordinate.latitude
                                 let longitude = asset.location?.coordinate.longitude
-                                originalName = PHAssetResource.assetResources(for: asset).first?.originalFilename ?? ""
-                                assetLocalIdentifier =  PHAssetResource.assetResources(for: asset).first?.assetLocalIdentifier ?? ""
-                                mimeType =  String(originalName.suffix(3)).uppercased()
-                                let fullLink = asset.localIdentifier.components(separatedBy: "/").first!
-                                let uri = "assets-library://asset/asset.\(mimeType)?id=\(String(describing: fullLink))&ext=\(mimeType)"
-                                
+                                if(AssetType == "Photos"){
+                                    uri = "ph://\(assetLocalIdentifier)"
+                                } else if(AssetType == "Videos"){
+                                    let originalName = PHAssetResource.assetResources(for: asset).first?.originalFilename ?? ""
+                                    let mimeType =  String(originalName.suffix(3)).uppercased()
+                                    let fullLink = asset.localIdentifier.components(separatedBy: "/").first!
+                                    uri = "assets-library://asset/asset.\(mimeType)?id=\(String(describing: fullLink))&ext=\(mimeType)"
+                                }
                                 let newAlbum : [String: Any] =
                                     [
                                         "uri": uri,
@@ -224,9 +214,6 @@ class RNCameraRollMedia: NSObject {
                                         "location": [ "latitude": latitude,
                                                       "longitude": longitude
                                         ],
-                                        "originalName": originalName,
-                                        "mimeType": mimeType,
-                                        "assetLocalIdentifier": assetLocalIdentifier
                                 ]
                                 AssetsArray.append(newAlbum)
                                 if((assets.count - 1) == count && assets.count > 0 ){
