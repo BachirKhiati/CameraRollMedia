@@ -77,6 +77,7 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
     private static final String SELECTION_BUCKET = Images.Media.BUCKET_DISPLAY_NAME + " = ?";
     private static final String SELECTION_DATE_TAKEN = Images.Media.DATE_TAKEN + " < ?";
+    private static final String SELECTION_DATE_TAKEN_BEFORE = Images.Media.DATE_TAKEN + " > ?";
 
 
     private final ReactApplicationContext reactContext;
@@ -94,13 +95,15 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void fetchAssets(final ReadableMap params, final Promise promise) {
-        int first = params.hasKey("count") ? params.getInt("count") : 120;
+        String first = params.hasKey("first") ? params.getString("first") : null;
+        int count = params.hasKey("count") ? params.getInt("count") : 120;
         String after = params.hasKey("after") ? params.getString("after") : null;
         String assetType = params.hasKey("assetType") ? params.getString("assetType") : ASSET_TYPE_PHOTOS;
         String albumName = params.hasKey("title") ? params.getString("title") : null;
         new GetMediaTask(
                 getReactApplicationContext(),
                 albumName,
+                count,
                 first,
                 after,
                 assetType,
@@ -167,8 +170,9 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     private static class GetMediaTask extends GuardedAsyncTask<Void, Void> {
         private final Context mContext;
         private final String mAlbumName;
-        private final int mFirst;
+        private final int mCount;
         private final @Nullable
+        String mFirst;
         String mAfter;
         private final Promise mPromise;
         private final String mAssetType;
@@ -176,13 +180,15 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
         private GetMediaTask(
                 ReactContext context,
                 String  AlbumName,
-                int first,
+                int count,
+                @Nullable String first,
                 @Nullable String after,
                 String assetType,
                 Promise promise) {
             super(context);
             mContext = context;
             mAlbumName = AlbumName;
+            mCount = count;
             mFirst = first;
             mAfter = after;
             mPromise = promise;
@@ -197,7 +203,10 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                 selection.append(" AND " + SELECTION_BUCKET);
                 selectionArgs.add(mAlbumName);
             }
-            if (!TextUtils.isEmpty(mAfter)) {
+            if (!TextUtils.isEmpty(mFirst)) {
+                selection.append(" AND " + SELECTION_DATE_TAKEN_BEFORE);
+                selectionArgs.add(mFirst);
+            } else if (!TextUtils.isEmpty(mAfter)) {
                 selection.append(" AND " + SELECTION_DATE_TAKEN);
                 selectionArgs.add(mAfter);
             }
@@ -228,13 +237,13 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                         selection.toString(),
                         selectionArgs.toArray(new String[selectionArgs.size()]),
                         Images.Media.DATE_TAKEN + " DESC, " + Images.Media.DATE_MODIFIED + " DESC LIMIT " +
-                                (mFirst + 1)); // set LIMIT to first + 1 so that we know how to populate page_info
+                                (mCount + 1)); // set LIMIT to first + 1 so that we know how to populate page_info
                 if (media == null) {
                     mPromise.reject(ERROR_UNABLE_TO_LOAD, "Could not get media");
                 } else {
                     try {
-                        putAssets(resolver, media, response, mFirst);
-                        putLimits(media, response, mFirst);
+                        putAssets(resolver, media, response, mCount);
+                        putLimits(media, response, mCount);
                     } finally {
                         media.close();
                         mPromise.resolve(response);
@@ -250,13 +259,22 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     }
 
     private static void putLimits(Cursor media, WritableMap response, int limit) {
-        response.putBoolean("NoMore", limit > media.getCount());
+        response.putBoolean("noMore", limit > media.getCount());
+        Log.d("Tesssst", "Count count");
+        Log.d("Tesssst", String.valueOf(media.getCount()));
         if (limit < media.getCount()) {
             media.moveToPosition(limit - 1);
             response.putString(
                     "lastAssetUnix",
                     media.getString(media.getColumnIndex(Images.Media.DATE_TAKEN)));
         }
+        if (media.getCount() > 0) {
+            media.moveToPosition(0);
+            response.putString(
+                    "firstAssetUnix",
+                    media.getString(media.getColumnIndex(Images.Media.DATE_TAKEN)));
+        }
+
     }
 
     private static void putAssets(

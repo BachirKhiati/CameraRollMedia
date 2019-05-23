@@ -54,8 +54,8 @@ export type PhotoIdentifier = {
 export type PhotoIdentifiersPage = {
     assets: Array<PhotoIdentifier>,
     NoMore: boolean,
-    start_cursor?: string,
-    end_cursor?: string,
+    firstAssetUnix?: string,
+    lastAssetUnix?: string,
 };
 
 /**
