@@ -171,23 +171,14 @@ class RNCameraRollMedia: NSObject {
                     let fetchOptions = PHFetchOptions()
                     fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
                     fetchOptions.fetchLimit = Count
-                  
-                   
                     if(First != nil) {
-                         print("fetch update new")
-                        print("First")
-                        print(First!)
                         let startDate = NSDate(timeIntervalSince1970: Double(First! / 1000))
-//                        let date = NSDate(timeInterval: startDate, sinceDate: NSDate())
                         if(AssetType == "Videos"){
                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate > %@)", PHAssetMediaType.video.rawValue, startDate)
                         } else {
                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate > %@)", PHAssetMediaType.image.rawValue, startDate)
                         }
                     } else if(LastAssetUnix != nil) {
-                        print("fetch old photo")
-                        print("LastAssetUnix")
-                        print(LastAssetUnix!)
                         let startDate = NSDate(timeIntervalSince1970: Double(LastAssetUnix!  / 1000))
                         if(AssetType == "Videos"){
                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate < %@)", PHAssetMediaType.video.rawValue, startDate)
@@ -242,9 +233,6 @@ class RNCameraRollMedia: NSObject {
                                 if((assets.count - 1) == count && assets.count > 0 ){
                                     LastAssetUnix = Int(asset.creationDate?.timeIntervalSince1970.rounded() ?? asset.modificationDate?.timeIntervalSince1970.rounded() ?? 0) * 1000
                                 }
-                                print("count")
-                                print(count)
-
                                 if(count == 0){
                                     FirstAssetUnix = Int(asset.creationDate?.timeIntervalSince1970.rounded() ?? asset.modificationDate?.timeIntervalSince1970.rounded() ?? 0) * 1000
                                 }
