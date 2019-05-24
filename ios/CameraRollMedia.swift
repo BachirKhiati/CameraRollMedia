@@ -115,8 +115,8 @@ class RNCameraRollMedia: NSObject {
         var AlbumSubType : Int = 209;
         var AlbumType : Bool = false;
         var AssetType : String;
-        var LastAssetUnix : Int = Int(Date().timeIntervalSince1970);
-        var FirstAssetUnix : Int = Int(Date().timeIntervalSince1970);
+        var LastAssetUnix : Int? = nil;
+        var FirstAssetUnix : Int? = nil;
         var First : Int? = nil
         var Count : Int = 120;
         var NoMore = false;
@@ -177,18 +177,18 @@ class RNCameraRollMedia: NSObject {
                          print("fetch update new")
                         print("First")
                         print(First!)
-                        let startDate = NSDate(timeIntervalSince1970: Double(First!))
+                        let startDate = NSDate(timeIntervalSince1970: Double(First! / 1000))
 //                        let date = NSDate(timeInterval: startDate, sinceDate: NSDate())
                         if(AssetType == "Videos"){
                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate > %@)", PHAssetMediaType.video.rawValue, startDate)
                         } else {
                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate > %@)", PHAssetMediaType.image.rawValue, startDate)
                         }
-                    } else if(LastAssetUnix > 0) {
+                    } else if(LastAssetUnix != nil) {
                         print("fetch old photo")
                         print("LastAssetUnix")
-                        print(LastAssetUnix)
-                        let startDate = NSDate(timeIntervalSince1970: Double(LastAssetUnix))
+                        print(LastAssetUnix!)
+                        let startDate = NSDate(timeIntervalSince1970: Double(LastAssetUnix!  / 1000))
                         if(AssetType == "Videos"){
                             fetchOptions.predicate = NSPredicate(format: "(mediaType == %d) AND (creationDate < %@)", PHAssetMediaType.video.rawValue, startDate)
                         } else {
@@ -240,10 +240,13 @@ class RNCameraRollMedia: NSObject {
                                         ]
                                 AssetsArray.append(newAlbum)
                                 if((assets.count - 1) == count && assets.count > 0 ){
-                                    LastAssetUnix = Int(asset.creationDate?.timeIntervalSince1970.rounded() ?? asset.modificationDate?.timeIntervalSince1970.rounded() ?? 0)
+                                    LastAssetUnix = Int(asset.creationDate?.timeIntervalSince1970.rounded() ?? asset.modificationDate?.timeIntervalSince1970.rounded() ?? 0) * 1000
                                 }
-                                if((assets.count - 1) == 0 && assets.count > 0 ){
-                                    FirstAssetUnix = Int(asset.creationDate?.timeIntervalSince1970.rounded() ?? asset.modificationDate?.timeIntervalSince1970.rounded() ?? 0)
+                                print("count")
+                                print(count)
+
+                                if(count == 0){
+                                    FirstAssetUnix = Int(asset.creationDate?.timeIntervalSince1970.rounded() ?? asset.modificationDate?.timeIntervalSince1970.rounded() ?? 0) * 1000
                                 }
                             }
                             
