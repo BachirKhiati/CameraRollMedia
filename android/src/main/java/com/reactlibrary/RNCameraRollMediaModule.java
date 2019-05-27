@@ -259,20 +259,21 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     }
 
     private static void putLimits(Cursor media, WritableMap response, int limit) {
-        response.putBoolean("noMore", limit > media.getCount());
-        Log.d("Tesssst", "Count count");
-        Log.d("Tesssst", String.valueOf(media.getCount()));
-        if (limit < media.getCount()) {
-            media.moveToPosition(limit - 1);
-            response.putString(
-                    "lastAssetUnix",
-                    media.getString(media.getColumnIndex(Images.Media.DATE_TAKEN)));
-        }
+        response.putBoolean("noMore", limit >= media.getCount());
         if (media.getCount() > 0) {
             media.moveToPosition(0);
             response.putString(
                     "firstAssetUnix",
                     media.getString(media.getColumnIndex(Images.Media.DATE_TAKEN)));
+            if(media.getCount() > limit){
+                media.moveToPosition(limit - 1);
+            } else {
+                media.moveToPosition(media.getCount() - 1);
+            }
+            response.putString(
+                    "lastAssetUnix",
+                    media.getString(media.getColumnIndex(Images.Media.DATE_TAKEN)));
+
         }
 
     }

@@ -13,5 +13,11 @@
   "license": "",
   "peerDependencies": {
     "react-native": "^0.59.5"
+  },
+  "jest": {
+    "preset": "react-native",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ]
   }
 }

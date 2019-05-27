@@ -1,16 +1,6 @@
-/**
- * Copyright (c) Bachir Khiati.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- * @flow
- * @format
- */
-'use strict';
 
-import RNCameraRollMedia from './js/nativeInterface';
-const invariant = require('fbjs/lib/invariant');
+import { NativeModules } from 'react-native'
+const RNCameraRollMedia = NativeModules.RNCameraRollMedia
 
 const ASSET_TYPE_OPTIONS = {
   Videos: 'Videos',
