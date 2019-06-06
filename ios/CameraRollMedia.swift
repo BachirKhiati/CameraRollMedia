@@ -40,41 +40,123 @@ class RNCameraRollMedia: NSObject {
     public func getAlbums(_ type: String, resolve: @escaping RCTPromiseResolveBlock,
                           rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
         
-        let status = PHPhotoLibrary.authorizationStatus()
+        var subtypes :  [PHAssetCollectionSubtype] = []
+        if( type == "Photos"){
+            subtypes = [
+                .smartAlbumFavorites,
+                .smartAlbumPanoramas,
+                .smartAlbumScreenshots,
+                .smartAlbumSelfPortraits,
+                .smartAlbumRecentlyAdded,
+                .smartAlbumSelfPortraits,
+                .smartAlbumUserLibrary,
+                .smartAlbumBursts
+            ]
+        } else if( type == "Videos"){
+            subtypes = [
+                .smartAlbumVideos
+            ]
+        }
         
-        if (status == PHAuthorizationStatus.authorized) {
-            print("permission accepted")
-            resolve(getAlbumsFunc(type: type));
-        }
-            
-        else if (status == PHAuthorizationStatus.denied) {
-            print("permission deniied auto")
-            // Access has been denied.
-            resolve(nil);
-            RNCameraRollMedia.openAppSettings()
-
-        }
-            
-        else if (status == PHAuthorizationStatus.notDetermined) {
-            
-            // Access has not been determined.
-            PHPhotoLibrary.requestAuthorization({ (newStatus) in
-                if (newStatus == PHAuthorizationStatus.authorized) {
-                      print("permission accepted  manual")
-                    resolve(self.getAlbumsFunc(type: type));
+        var AlbumsArray : [Dictionary<String,Any>] = []
+        var AlbumsTitlesArray : [String] = []
+        DispatchQueue.global(qos: .background).sync() {
+            let fetchOptions = PHFetchOptions()
+            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "localizedTitle", ascending: true)]
+            let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+            // normal album fetchng
+            [albums].forEach {
+                $0.enumerateObjects { collection, index, stop in
+                    let album = collection
+                    if  album.estimatedAssetCount != NSNotFound {
+                        let title = album.localizedTitle ?? "Album"
+                        let count =  album.estimatedAssetCount as Int
+                        let type = album.assetCollectionType.rawValue as Int
+                        let data: [String: Any] = [
+                            "title": title,
+                            "count": count,
+                            "subType": type,
+                            "smartAlbum": "false",
+                            "assetType": "Photos"
+                        ]
+                        if (album.localizedTitle == "Camera Roll" || album.localizedTitle == "All Photos") {
+                            AlbumsArray.insert(data, at: 0)
+                            AlbumsTitlesArray.insert("\(title) (\(String(count)))"  , at: 0)
+                        } else {
+                            AlbumsArray.append(data)
+                            AlbumsTitlesArray.append("\(title) (\(String(count)))")
+                        }
+                    }
                 }
-                else {
-                      print("permission deniied slelected")
-                    resolve(nil);
-                    RNCameraRollMedia.openAppSettings()
+            }
+            // smart album fetchng
+            for subtype in subtypes {
+                if let collection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: fetchOptions).firstObject, collection.photosCount > 0 {
+                    let title = collection.localizedTitle ?? "Album"
+                    let count =  collection.photosCount as Int
+                    let type = subtype.rawValue as Int
+                    let data: [String: Any] = [
+                        "title": title,
+                        "count": count,
+                        "subType": type,
+                        "smartAlbum": "true",
+                        "assetType": "Photos"
+                    ]
+                    if (collection.localizedTitle == "Camera Roll" || collection.localizedTitle == "All Photos") {
+                        AlbumsArray.insert(data, at: 0)
+                        AlbumsTitlesArray.insert("\(collection.localizedTitle!) (\(String(collection.photosCount)))"  , at: 0)
+                    } else {
+                        AlbumsArray.append(data)
+                        AlbumsTitlesArray.append("\(collection.localizedTitle!) (\(String(collection.photosCount)))" )
+                    }
                 }
-            })
+            }
+            print("1 2 4")
         }
-            
-        else if (status == PHAuthorizationStatus.restricted) {
-            // Restricted access - normally won't happen.
-            resolve(nil);
+        print("2 3 9")
+        if(AlbumsTitlesArray.count > 0){
+            let result =  [AlbumsArray, AlbumsTitlesArray] as [Any]
+            resolve(result)
+        }else {
+              resolve(nil)
         }
+        
+        
+//        let status = PHPhotoLibrary.authorizationStatus()
+//
+//        if (status == PHAuthorizationStatus.authorized) {
+//            print("permission accepted")
+//            resolve(getAlbumsFunc(type: type));
+//        }
+//
+//        else if (status == PHAuthorizationStatus.denied) {
+//            print("permission deniied auto")
+//            // Access has been denied.
+//            resolve(nil);
+//            RNCameraRollMedia.openAppSettings()
+//
+//        }
+//
+//        else if (status == PHAuthorizationStatus.notDetermined) {
+//
+//            // Access has not been determined.
+//            PHPhotoLibrary.requestAuthorization({ (newStatus) in
+//                if (newStatus == PHAuthorizationStatus.authorized) {
+//                      print("permission accepted  manual")
+//                    resolve(self.getAlbumsFunc(type: type));
+//                }
+//                else {
+//                      print("permission deniied slelected")
+//                    resolve(nil);
+//                    RNCameraRollMedia.openAppSettings()
+//                }
+//            })
+//        }
+//
+//        else if (status == PHAuthorizationStatus.restricted) {
+//            // Restricted access - normally won't happen.
+//            resolve(nil);
+//        }
         
         
     }
@@ -151,9 +233,7 @@ class RNCameraRollMedia: NSObject {
                     }
                 }
             }
-            print("1 2 4")
         }
-        print("2 3 9")
         let result =  [AlbumsArray, AlbumsTitlesArray] as [Any]
         return result
     }
