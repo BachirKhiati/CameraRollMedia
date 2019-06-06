@@ -161,8 +161,8 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void getAlbums(final Promise promise) {
-        new GetAlbums(getReactApplicationContext(), promise).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    public void getAlbums(final String type, final Promise promise) {
+        new GetAlbums(type, getReactApplicationContext(), promise).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
 

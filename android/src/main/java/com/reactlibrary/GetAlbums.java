@@ -27,10 +27,12 @@ import java.util.Map;
 class GetAlbums extends AsyncTask<Void, Void, Void> {
     private final Context mContext;
     private final Promise mPromise;
+    private final String mType;
 
-    public GetAlbums(Context context, Promise promise) {
+    public GetAlbums(String type, Context context, Promise promise) {
         mContext = context;
         mPromise = promise;
+        mType = type;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -43,8 +45,12 @@ class GetAlbums extends AsyncTask<Void, Void, Void> {
 
         final String countColumn = "COUNT(*)";
         final String[] projection = {MediaStore.Images.Media.BUCKET_ID, MediaStore.Images.Media.BUCKET_DISPLAY_NAME, countColumn};
-
-        final String selection = MediaStore.Files.FileColumns.MEDIA_TYPE + " == " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + ") /*";
+        String selection = null;
+        if(mType.equals("Photos")){
+            selection = MediaStore.Files.FileColumns.MEDIA_TYPE + " == " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + ") /*";
+        }else if (mType.equals("Videos")){
+           selection = MediaStore.Files.FileColumns.MEDIA_TYPE + " == " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO + ") /*";
+        }
 
         try (Cursor albums = mContext.getContentResolver().query(
                 MediaStore.Files.getContentUri("external"),

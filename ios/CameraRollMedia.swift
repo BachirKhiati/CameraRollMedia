@@ -37,9 +37,52 @@ class RNCameraRollMedia: NSObject {
     
     
     @objc
-    public func getAlbums(_ resolve: @escaping RCTPromiseResolveBlock,
+    public func getAlbums(_ type: String, resolve: @escaping RCTPromiseResolveBlock,
                           rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
-        let subtypes: [PHAssetCollectionSubtype] = [
+        
+        let status = PHPhotoLibrary.authorizationStatus()
+        
+        if (status == PHAuthorizationStatus.authorized) {
+            print("permission accepted")
+            resolve(getAlbumsFunc(type: type));
+        }
+            
+        else if (status == PHAuthorizationStatus.denied) {
+            print("permission deniied auto")
+            // Access has been denied.
+            resolve(nil);
+            RNCameraRollMedia.openAppSettings()
+
+        }
+            
+        else if (status == PHAuthorizationStatus.notDetermined) {
+            
+            // Access has not been determined.
+            PHPhotoLibrary.requestAuthorization({ (newStatus) in
+                if (newStatus == PHAuthorizationStatus.authorized) {
+                      print("permission accepted  manual")
+                    resolve(self.getAlbumsFunc(type: type));
+                }
+                else {
+                      print("permission deniied slelected")
+                    resolve(nil);
+                    RNCameraRollMedia.openAppSettings()
+                }
+            })
+        }
+            
+        else if (status == PHAuthorizationStatus.restricted) {
+            // Restricted access - normally won't happen.
+            resolve(nil);
+        }
+        
+        
+    }
+    
+    func getAlbumsFunc(type: String) -> [Any] {
+        var subtypes :  [PHAssetCollectionSubtype] = []
+        if( type == "Photos"){
+            subtypes = [
             .smartAlbumFavorites,
             .smartAlbumPanoramas,
             .smartAlbumScreenshots,
@@ -48,20 +91,25 @@ class RNCameraRollMedia: NSObject {
             .smartAlbumSelfPortraits,
             .smartAlbumUserLibrary,
             .smartAlbumBursts
-        ]
+            ]
+        } else if( type == "Videos"){
+            subtypes = [
+             .smartAlbumVideos
+            ]
+        }
+
         var AlbumsArray : [Dictionary<String,Any>] = []
         var AlbumsTitlesArray : [String] = []
-        DispatchQueue.global(qos: .background).async() {
+        DispatchQueue.global(qos: .background).sync() {
             let fetchOptions = PHFetchOptions()
             fetchOptions.sortDescriptors = [NSSortDescriptor(key: "localizedTitle", ascending: true)]
             let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-            //            let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: fetchOptions)
             // normal album fetchng
             [albums].forEach {
                 $0.enumerateObjects { collection, index, stop in
                     let album = collection
                     if  album.estimatedAssetCount != NSNotFound {
-                        let title = album.localizedTitle as! String
+                        let title = album.localizedTitle ?? "Album"
                         let count =  album.estimatedAssetCount as Int
                         let type = album.assetCollectionType.rawValue as Int
                         let data: [String: Any] = [
@@ -84,11 +132,11 @@ class RNCameraRollMedia: NSObject {
             // smart album fetchng
             for subtype in subtypes {
                 if let collection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: fetchOptions).firstObject, collection.photosCount > 0 {
-                    let title = collection.localizedTitle
+                    let title = collection.localizedTitle ?? "Album"
                     let count =  collection.photosCount as Int
                     let type = subtype.rawValue as Int
                     let data: [String: Any] = [
-                        "title": title as! String,
+                        "title": title,
                         "count": count,
                         "subType": type,
                         "smartAlbum": "true",
@@ -103,9 +151,14 @@ class RNCameraRollMedia: NSObject {
                     }
                 }
             }
-            resolve([AlbumsArray, AlbumsTitlesArray])
+            print("1 2 4")
         }
+        print("2 3 9")
+        let result =  [AlbumsArray, AlbumsTitlesArray] as [Any]
+        return result
     }
+    
+    
     
     
     @objc
@@ -250,7 +303,7 @@ class RNCameraRollMedia: NSObject {
                     
                 }
             })
-            resolve(["noMore": NoMore, "firstAssetUnix": FirstAssetUnix, "lastAssetUnix": LastAssetUnix,  "assets":AssetsArray])
+            resolve(["noMore": NoMore, "firstAssetUnix": FirstAssetUnix as Any, "lastAssetUnix": LastAssetUnix as Any,  "assets":AssetsArray])
         }
     }
     
@@ -280,5 +333,23 @@ class RNCameraRollMedia: NSObject {
         }
         
     }
+    
+    func checkPermission(type: String){
+
+        
+    }
+    
+    static func openAppSettings() {
+        if let url = URL(string:UIApplication.openSettingsURLString) {
+            if UIApplication.shared.canOpenURL(url) {
+                if #available(iOS 10.0, *) {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                } else {
+                    UIApplication.shared.openURL(url)
+                }
+            }
+        }
+    }
+    
     
 }

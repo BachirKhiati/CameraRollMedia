@@ -16,6 +16,9 @@ export type GetAssetsParams = {
   after?: number,
   assetType?: $Keys<typeof ASSET_TYPE_OPTIONS>
 };
+export type GetVideoParams = {
+  type?: string
+};
 
 export type GetSizeParams = {
   uri?: string
@@ -57,11 +60,12 @@ class CameraRollMedia {
   static AssetTypeOptions = ASSET_TYPE_OPTIONS;
 
 
-  static getAlbums (): Promise<PhotoIdentifiersPage> {
+  static getAlbums (param: GetVideoParams): Promise<PhotoIdentifiersPage> {
+    
     if (arguments.length > 1) {
-      RNCameraRollMedia.getAlbums().then(successCallback, errorCallback);
+      RNCameraRollMedia.getAlbums(param).then(successCallback, errorCallback);
     }
-    return RNCameraRollMedia.getAlbums();
+    return RNCameraRollMedia.getAlbums(param);
   }
 
   static fetchAssets(params: GetAssetsParams): Promise<PhotoIdentifiersPage> {
