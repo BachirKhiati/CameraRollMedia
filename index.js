@@ -20,6 +20,10 @@ export type GetVideoParams = {
   type?: string
 };
 
+export type GetBase64Params = {
+    linkUrl?: string
+};
+
 export type GetSizeParams = {
   uri?: string
 };
@@ -59,6 +63,13 @@ export type PhotoIdentifiersPage = {
 class CameraRollMedia {
   static AssetTypeOptions = ASSET_TYPE_OPTIONS;
 
+  static getBase64 (param: GetVideoParams): Promise<PhotoIdentifiersPage> {
+
+      if (arguments.length > 1) {
+          RNCameraRollMedia.getBase64(param).then(successCallback, errorCallback);
+      }
+      return RNCameraRollMedia.getBase64(param);
+  }
 
   static getAlbums (param: GetVideoParams): Promise<PhotoIdentifiersPage> {
     

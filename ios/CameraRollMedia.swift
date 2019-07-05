@@ -34,7 +34,21 @@ class RNCameraRollMedia: NSObject {
         case videos = "two"
     }
     
-    
+    @objc
+    public func getBase64(_ linkUrl: String, resolve: @escaping RCTPromiseResolveBlock,
+                          rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
+        
+        
+      
+        //Use image's path to create NSData
+        let url:NSURL = NSURL(string : linkUrl)!
+        //Now use image to create into NSData format
+        let imageData : NSData = NSData.init(contentsOf: url as URL)!
+        let strBase64 = imageData.base64EncodedString(options: .lineLength64Characters)
+        resolve(strBase64)
+
+        
+    }
     
     @objc
     public func getAlbums(_ type: String, resolve: @escaping RCTPromiseResolveBlock,
@@ -63,65 +77,55 @@ class RNCameraRollMedia: NSObject {
         DispatchQueue.global(qos: .background).sync() {
             let fetchOptions = PHFetchOptions()
             fetchOptions.sortDescriptors = [NSSortDescriptor(key: "localizedTitle", ascending: true)]
-                let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-                // normal album fetchng
-                [albums].forEach {
-                    $0.enumerateObjects { collection, index, stop in
-                        let album = collection
-                        if  album.estimatedAssetCount != NSNotFound {
-                            let fetchOptions = PHFetchOptions()
-                            fetchOptions.predicate = NSPredicate(format: "mediaType == %d", type == "Photos" ? PHAssetMediaType.image.rawValue : PHAssetMediaType.video.rawValue)
-                            let fetchAssetsResult = PHAsset.fetchAssets(in: album, options: fetchOptions)
-                            if(fetchAssetsResult.count > 0){
-                                let title = album.localizedTitle ?? "Album"
-                                let count =  fetchAssetsResult.count
-                                let subType = album.assetCollectionType.rawValue as Int
-                                let data: [String: Any] = [
-                                    "title": title,
-                                    "count": count,
-                                    "subType": subType,
-                                    "smartAlbum": "false",
-                                    "assetType": type
-                                ]
-                                if (album.localizedTitle == "Camera Roll" || album.localizedTitle == "All Photos" || album.localizedTitle == "Videos") {
-                                    AlbumsArray.insert(data, at: 0)
-                                    AlbumsTitlesArray.insert("\(title) (\(String(count)))"  , at: 0)
-                                } else {
-                                    AlbumsArray.append(data)
-                                    AlbumsTitlesArray.append("\(title) (\(String(count)))")
-                                }
-                            }
-                        }
-                    }
-                }
-                // smart album fetchng
-                for subtype in subtypes {
-                    if let collection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: fetchOptions).firstObject, collection.photosCount > 0 {
-                        let fetchOptions = PHFetchOptions()
-                        fetchOptions.predicate = NSPredicate(format: "mediaType == %d", type == "Photos" ? PHAssetMediaType.image.rawValue : PHAssetMediaType.video.rawValue)
-                        let fetchAssetsResult = PHAsset.fetchAssets(in: collection, options: fetchOptions)
-                        if(fetchAssetsResult.count > 0){
-                        let title = collection.localizedTitle ?? "Album"
-                        let count =  fetchAssetsResult.count
-                        let subType = subtype.rawValue as Int
+            let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+            // normal album fetchng
+            [albums].forEach {
+                $0.enumerateObjects { collection, index, stop in
+                    let album = collection
+                    if  album.estimatedAssetCount != NSNotFound {
+                        let title = album.localizedTitle ?? "Album"
+                        let count =  album.estimatedAssetCount as Int
+                        let type = album.assetCollectionType.rawValue as Int
                         let data: [String: Any] = [
                             "title": title,
                             "count": count,
-                            "subType": subType,
-                            "smartAlbum": "true",
-                            "assetType": type
+                            "subType": type,
+                            "smartAlbum": "false",
+                            "assetType": "Photos"
                         ]
-                        if (collection.localizedTitle == "Camera Roll" || collection.localizedTitle == "All Photos" || collection.localizedTitle == "Videos") {
+                        if (album.localizedTitle == "Camera Roll" || album.localizedTitle == "All Photos") {
                             AlbumsArray.insert(data, at: 0)
-                            AlbumsTitlesArray.insert("\(collection.localizedTitle!) (\(String(count)))"  , at: 0)
+                            AlbumsTitlesArray.insert("\(title) (\(String(count)))"  , at: 0)
                         } else {
                             AlbumsArray.append(data)
-                            AlbumsTitlesArray.append("\(collection.localizedTitle!) (\(String(count)))" )
-                        }
+                            AlbumsTitlesArray.append("\(title) (\(String(count)))")
                         }
                     }
                 }
-                print("1 2 4")
+            }
+            // smart album fetchng
+            for subtype in subtypes {
+                if let collection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: fetchOptions).firstObject, collection.photosCount > 0 {
+                    let title = collection.localizedTitle ?? "Album"
+                    let count =  collection.photosCount as Int
+                    let type = subtype.rawValue as Int
+                    let data: [String: Any] = [
+                        "title": title,
+                        "count": count,
+                        "subType": type,
+                        "smartAlbum": "true",
+                        "assetType": "Photos"
+                    ]
+                    if (collection.localizedTitle == "Camera Roll" || collection.localizedTitle == "All Photos") {
+                        AlbumsArray.insert(data, at: 0)
+                        AlbumsTitlesArray.insert("\(collection.localizedTitle!) (\(String(collection.photosCount)))"  , at: 0)
+                    } else {
+                        AlbumsArray.append(data)
+                        AlbumsTitlesArray.append("\(collection.localizedTitle!) (\(String(collection.photosCount)))" )
+                    }
+                }
+            }
+            print("1 2 4")
         }
         print("2 3 9")
         if(AlbumsTitlesArray.count > 0){
