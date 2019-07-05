@@ -23,6 +23,7 @@ import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.content.ContentResolver;
 import android.widget.ImageView;
@@ -112,6 +113,29 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void getBase64(final String linkUrl, final Promise promise) {
+        try {
+            URL imageUrl = new URL(linkUrl);
+            URLConnection ucon = imageUrl.openConnection();
+            InputStream is = ucon.getInputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int read = 0;
+            while ((read = is.read(buffer, 0, buffer.length)) != -1) {
+                baos.write(buffer, 0, read);
+            }
+            baos.flush();
+            promise.resolve(Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT));
+            return;
+        } catch (Exception e) {
+            Log.d("Error", e.toString());
+        }
+        promise.resolve("null");
+
+    }
+
+
+    @ReactMethod
     public void getSize(String uri, final Promise promise) {
         try {
             Uri u = Uri.parse(uri);
@@ -145,10 +169,6 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                 }
 
             }
-
-
-
-
             WritableMap map = Arguments.createMap();
 
             map.putInt("height", height);
