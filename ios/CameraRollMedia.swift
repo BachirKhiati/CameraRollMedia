@@ -58,8 +58,9 @@ class RNCameraRollMedia: NSObject {
 
         else if (status == PHAuthorizationStatus.denied) {
             // Access has been denied.
-            resolve(["error" : "Permission Needed!"]);
-            self.showSimpleAlert();
+            self.showSimpleAlert(returnCompletion: { (close) -> Void in
+                resolve(close)
+            })
 
         }
 
@@ -71,16 +72,18 @@ class RNCameraRollMedia: NSObject {
                     resolve(self.getAlbumsFunc(type: type));
                 }
                 else {
-                    resolve(["error" : "Permission Needed!"]);
-                     self.showSimpleAlert();
+                    self.showSimpleAlert(returnCompletion: { (close) -> Void in
+                        resolve(close)
+                    })
                 }
             })
         }
 
         else if (status == PHAuthorizationStatus.restricted) {
             // Restricted access - normally won't happen.
-             resolve(["error" : "Permission Needed!"]);
-             self.showSimpleAlert();
+            self.showSimpleAlert(returnCompletion: { (close) -> Void in
+                resolve(close)
+            })
         }
         
         
@@ -185,9 +188,10 @@ class RNCameraRollMedia: NSObject {
         }
         else if (status == PHAuthorizationStatus.denied) {
             // Access has been denied.
-            resolve(["error" : "Permission Needed!"]);
-            self.showSimpleAlert();
-
+            
+            self.showSimpleAlert(returnCompletion: { (close) -> Void in
+                resolve(close)
+            })
         }
             
         else if (status == PHAuthorizationStatus.notDetermined) {
@@ -200,8 +204,10 @@ class RNCameraRollMedia: NSObject {
                         })
                 }
                 else {
-                    resolve(["error" : "Permission Needed!"]);
-                    self.showSimpleAlert();
+//                    resolve(["error" : "Permission Needed!"]);
+                    self.showSimpleAlert(returnCompletion: { (close) -> Void in
+                        resolve(close)
+                    })
                 }
             })
         }
@@ -354,23 +360,36 @@ class RNCameraRollMedia: NSObject {
                 }
             })
             let result : [String:Any] = ["noMore": NoMore, "firstAssetUnix": FirstAssetUnix as Any, "lastAssetUnix": LastAssetUnix as Any,  "assets":AssetsArray]
-            print("result")
-            print("result")
-             print(result)
             returnCompletion(result)
 
         }
     }
     
-    func showSimpleAlert() {
-        let alert = UIAlertController(title: "Permission Request", message: "Please, Allow the access of Photos!", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Open Setting", style: .default, handler: { action in
+    func showSimpleAlert(returnCompletion: @escaping ([String:Any]) -> () ){
+//        let alert = UIAlertController(title: "Permission Request", message: "Please, Allow the access of Photos!", preferredStyle: .actionSheet)
+//        alert.addAction(UIAlertAction(title: "Open Setting", style: .default, handler: { action in
+//            RNCameraRollMedia.openAppSettings()
+//            returnCompletion(["error" : "Permission Needed!"])
+//        }))
+//        alert.addAction(UIAlertAction(title: "No", style: .cancel, handler: { action in
+//            returnCompletion(["error" : "Permission Needed!"])
+//        }))
+//        //            present(alert, animated: true, completion: nil)
+//        var rootViewController = UIApplication.shared.keyWindow?.rootViewController
+//        rootViewController.
+//        rootViewController?.present(alert, animated: true, completion: nil)
+        
+        let alertController = UIAlertController(title: "Permission Request", message: "Please, Allow the access to Photos!", preferredStyle: .actionSheet)
+        alertController.addAction(UIAlertAction(title: "Open Setting", style: .default, handler: { action in
             RNCameraRollMedia.openAppSettings()
+            returnCompletion(["error" : "Permission Needed!"])
         }))
-        alert.addAction(UIAlertAction(title: "No", style: .cancel, handler: nil))
-        //            present(alert, animated: true, completion: nil)
-        UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil)
-
+        let cancelAction = UIAlertAction(title: "No!", style: .cancel) { (action:UIAlertAction!) in
+            print("Cancel button tapped");
+            returnCompletion(["error" : "Permission Needed!"])
+        }
+        alertController.addAction(cancelAction)
+        alertController.show()
     }
     
     func getURL(ofPhotoWith mPhasset: PHAsset, completionHandler : @escaping ((_ responseURL : URL?) -> Void)) {
