@@ -9,7 +9,6 @@
 import Foundation
 import Photos
 
-
 @available(iOS 9.0, *)
 @objc(RNCameraRollMedia)
 class RNCameraRollMedia: NSObject {
@@ -46,14 +45,48 @@ class RNCameraRollMedia: NSObject {
         let imageData : NSData = NSData.init(contentsOf: url as URL)!
         let strBase64 = imageData.base64EncodedString(options: .lineLength64Characters)
         resolve(strBase64)
-
-        
     }
     
     @objc
     public func getAlbums(_ type: String, resolve: @escaping RCTPromiseResolveBlock,
                           rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
+        let status = PHPhotoLibrary.authorizationStatus()
+
+        if (status == PHAuthorizationStatus.authorized) {
+            resolve(getAlbumsFunc(type: type));
+        }
+
+        else if (status == PHAuthorizationStatus.denied) {
+            // Access has been denied.
+            resolve(["error" : "Permission Needed!"]);
+            self.showSimpleAlert();
+
+        }
+
+        else if (status == PHAuthorizationStatus.notDetermined) {
+
+            // Access has not been determined.
+            PHPhotoLibrary.requestAuthorization({ (newStatus) in
+                if (newStatus == PHAuthorizationStatus.authorized) {
+                    resolve(self.getAlbumsFunc(type: type));
+                }
+                else {
+                    resolve(["error" : "Permission Needed!"]);
+                     self.showSimpleAlert();
+                }
+            })
+        }
+
+        else if (status == PHAuthorizationStatus.restricted) {
+            // Restricted access - normally won't happen.
+             resolve(["error" : "Permission Needed!"]);
+             self.showSimpleAlert();
+        }
         
+        
+    }
+    
+    func getAlbumsFunc(type: String) -> [Any] {
         var subtypes :  [PHAssetCollectionSubtype] = []
         if( type == "Photos"){
             subtypes = [
@@ -127,137 +160,61 @@ class RNCameraRollMedia: NSObject {
             }
             print("1 2 4")
         }
+        
+        
         print("2 3 9")
         if(AlbumsTitlesArray.count > 0){
             let result =  [AlbumsArray, AlbumsTitlesArray] as [Any]
-            resolve(result)
-        }else {
-              resolve(nil)
+            return result
+        } else {
+            return []
         }
-        
-        
-//        let status = PHPhotoLibrary.authorizationStatus()
-//
-//        if (status == PHAuthorizationStatus.authorized) {
-//            print("permission accepted")
-//            resolve(getAlbumsFunc(type: type));
-//        }
-//
-//        else if (status == PHAuthorizationStatus.denied) {
-//            print("permission deniied auto")
-//            // Access has been denied.
-//            resolve(nil);
-//            RNCameraRollMedia.openAppSettings()
-//
-//        }
-//
-//        else if (status == PHAuthorizationStatus.notDetermined) {
-//
-//            // Access has not been determined.
-//            PHPhotoLibrary.requestAuthorization({ (newStatus) in
-//                if (newStatus == PHAuthorizationStatus.authorized) {
-//                      print("permission accepted  manual")
-//                    resolve(self.getAlbumsFunc(type: type));
-//                }
-//                else {
-//                      print("permission deniied slelected")
-//                    resolve(nil);
-//                    RNCameraRollMedia.openAppSettings()
-//                }
-//            })
-//        }
-//
-//        else if (status == PHAuthorizationStatus.restricted) {
-//            // Restricted access - normally won't happen.
-//            resolve(nil);
-//        }
-        
         
     }
-    
-    func getAlbumsFunc(type: String) -> [Any] {
-        var subtypes :  [PHAssetCollectionSubtype] = []
-        if( type == "Photos"){
-            subtypes = [
-            .smartAlbumFavorites,
-            .smartAlbumPanoramas,
-            .smartAlbumScreenshots,
-            .smartAlbumSelfPortraits,
-            .smartAlbumRecentlyAdded,
-            .smartAlbumSelfPortraits,
-            .smartAlbumUserLibrary,
-            .smartAlbumBursts
-            ]
-        } else if( type == "Videos"){
-            subtypes = [
-             .smartAlbumVideos
-            ]
-        }
-
-        var AlbumsArray : [Dictionary<String,Any>] = []
-        var AlbumsTitlesArray : [String] = []
-        DispatchQueue.global(qos: .background).sync() {
-            let fetchOptions = PHFetchOptions()
-            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "localizedTitle", ascending: true)]
-            let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-            // normal album fetchng
-            [albums].forEach {
-                $0.enumerateObjects { collection, index, stop in
-                    let album = collection
-                    if  album.estimatedAssetCount != NSNotFound {
-                        let title = album.localizedTitle ?? "Album"
-                        let count =  album.estimatedAssetCount as Int
-                        let type = album.assetCollectionType.rawValue as Int
-                        let data: [String: Any] = [
-                            "title": title,
-                            "count": count,
-                            "subType": type,
-                            "smartAlbum": "false",
-                            "assetType": "Photos"
-                        ]
-                        if (album.localizedTitle == "Camera Roll" || album.localizedTitle == "All Photos") {
-                            AlbumsArray.insert(data, at: 0)
-                            AlbumsTitlesArray.insert("\(title) (\(String(count)))"  , at: 0)
-                        } else {
-                            AlbumsArray.append(data)
-                            AlbumsTitlesArray.append("\(title) (\(String(count)))")
-                        }
-                    }
-                }
-            }
-            // smart album fetchng
-            for subtype in subtypes {
-                if let collection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: fetchOptions).firstObject, collection.photosCount > 0 {
-                    let title = collection.localizedTitle ?? "Album"
-                    let count =  collection.photosCount as Int
-                    let type = subtype.rawValue as Int
-                    let data: [String: Any] = [
-                        "title": title,
-                        "count": count,
-                        "subType": type,
-                        "smartAlbum": "true",
-                        "assetType": "Photos"
-                    ]
-                    if (collection.localizedTitle == "Camera Roll" || collection.localizedTitle == "All Photos") {
-                        AlbumsArray.insert(data, at: 0)
-                        AlbumsTitlesArray.insert("\(collection.localizedTitle!) (\(String(collection.photosCount)))"  , at: 0)
-                    } else {
-                        AlbumsArray.append(data)
-                        AlbumsTitlesArray.append("\(collection.localizedTitle!) (\(String(collection.photosCount)))" )
-                    }
-                }
-            }
-        }
-        let result =  [AlbumsArray, AlbumsTitlesArray] as [Any]
-        return result
-    }
-    
-    
-    
     
     @objc
     public func fetchAssets(_ params: NSDictionary, resolve: @escaping RCTPromiseResolveBlock,
                             rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
+        
+        let status = PHPhotoLibrary.authorizationStatus()
+        
+        if (status == PHAuthorizationStatus.authorized) {
+            self.fetchAssetsFunc(params: params, returnCompletion: { (success) -> Void in
+                resolve(success)
+                })
+        }
+        else if (status == PHAuthorizationStatus.denied) {
+            // Access has been denied.
+            resolve(["error" : "Permission Needed!"]);
+            self.showSimpleAlert();
+
+        }
+            
+        else if (status == PHAuthorizationStatus.notDetermined) {
+            
+            // Access has not been determined.
+            PHPhotoLibrary.requestAuthorization({ (newStatus) in
+                if (newStatus == PHAuthorizationStatus.authorized) {
+                    self.fetchAssetsFunc(params: params, returnCompletion: { (success) -> Void in
+                        resolve(success)
+                        })
+                }
+                else {
+                    resolve(["error" : "Permission Needed!"]);
+                    self.showSimpleAlert();
+                }
+            })
+        }
+            
+        else if (status == PHAuthorizationStatus.restricted) {
+            // Restricted access - normally won't happen.
+             resolve(["error" : "Permission Needed!"]);
+        }
+        
+    }
+    
+    
+    func fetchAssetsFunc(params: NSDictionary, returnCompletion: @escaping ([String:Any]) -> () ){
         var AlbumName : String = "";
         var AlbumSubType : Int = 209;
         var AlbumType : Bool = false;
@@ -309,7 +266,6 @@ class RNCameraRollMedia: NSObject {
         if(!AlbumType && !AlbumName.isEmpty){
             fetchOptions.predicate = NSPredicate(format: "title = %@", AlbumName)
         }
-        
         DispatchQueue.global(qos: .background).async() {
             let fetchResult: PHFetchResult = PHAssetCollection.fetchAssetCollections(with: (AlbumType ? .smartAlbum : .album), subtype: PHAssetCollectionSubtype(rawValue: AlbumSubType ) ?? .any, options:  fetchOptions)
             fetchResult.enumerateObjects({ (object: AnyObject!, count: Int, stop: UnsafeMutablePointer) in
@@ -397,8 +353,24 @@ class RNCameraRollMedia: NSObject {
                     
                 }
             })
-            resolve(["noMore": NoMore, "firstAssetUnix": FirstAssetUnix as Any, "lastAssetUnix": LastAssetUnix as Any,  "assets":AssetsArray])
+            let result : [String:Any] = ["noMore": NoMore, "firstAssetUnix": FirstAssetUnix as Any, "lastAssetUnix": LastAssetUnix as Any,  "assets":AssetsArray]
+            print("result")
+            print("result")
+             print(result)
+            returnCompletion(result)
+
         }
+    }
+    
+    func showSimpleAlert() {
+        let alert = UIAlertController(title: "Permission Request", message: "Please, Allow the access of Photos!", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Open Setting", style: .default, handler: { action in
+            RNCameraRollMedia.openAppSettings()
+        }))
+        alert.addAction(UIAlertAction(title: "No", style: .cancel, handler: nil))
+        //            present(alert, animated: true, completion: nil)
+        UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil)
+
     }
     
     func getURL(ofPhotoWith mPhasset: PHAsset, completionHandler : @escaping ((_ responseURL : URL?) -> Void)) {
