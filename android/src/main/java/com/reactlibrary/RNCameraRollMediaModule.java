@@ -11,7 +11,7 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.arch.core.util.Function;
+import androidx.arch.core.util.Function;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
