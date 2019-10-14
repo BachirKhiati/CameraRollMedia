@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D22EE5B922D372B600B43339 /* UIAlertController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22EE5B822D372B600B43339 /* UIAlertController.swift */; };
 		D26546F1226F0743002C0CBB /* CameraRollMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26546F0226F0743002C0CBB /* CameraRollMedia.swift */; };
 		D28E039E226F1209006B3BC6 /* RNCameraRollMediaBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = D28E039D226F1209006B3BC6 /* RNCameraRollMediaBridge.m */; };
 		D28E03A2226F5E13006B3BC6 /* PHAssetCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28E03A1226F5E13006B3BC6 /* PHAssetCollection.swift */; };
@@ -27,7 +26,6 @@
 
 /* Begin PBXFileReference section */
 		134814201AA4EA6300B7C361 /* libRNCameraRollMedia.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRNCameraRollMedia.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		D22EE5B822D372B600B43339 /* UIAlertController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIAlertController.swift; sourceTree = "<group>"; };
 		D26546EF226F0743002C0CBB /* RNCameraRollMedia-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RNCameraRollMedia-Bridging-Header.h"; sourceTree = "<group>"; };
 		D26546F0226F0743002C0CBB /* CameraRollMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraRollMedia.swift; sourceTree = "<group>"; };
 		D28E039D226F1209006B3BC6 /* RNCameraRollMediaBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNCameraRollMediaBridge.m; sourceTree = "<group>"; };
@@ -56,7 +54,6 @@
 		58B511D21A9E6C8500147676 = {
 			isa = PBXGroup;
 			children = (
-				D22EE5B822D372B600B43339 /* UIAlertController.swift */,
 				D28E03A1226F5E13006B3BC6 /* PHAssetCollection.swift */,
 				D28E039D226F1209006B3BC6 /* RNCameraRollMediaBridge.m */,
 				D26546F0226F0743002C0CBB /* CameraRollMedia.swift */,
@@ -122,7 +119,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D22EE5B922D372B600B43339 /* UIAlertController.swift in Sources */,
 				D28E039E226F1209006B3BC6 /* RNCameraRollMediaBridge.m in Sources */,
 				D26546F1226F0743002C0CBB /* CameraRollMedia.swift in Sources */,
 				D28E03A2226F5E13006B3BC6 /* PHAssetCollection.swift in Sources */,

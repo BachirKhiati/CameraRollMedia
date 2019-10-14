@@ -11,8 +11,7 @@
 
 @interface RCT_EXTERN_MODULE(RNCameraRollMedia, NSObject)
 
-RCT_EXTERN_METHOD(getBase64:(NSString *) linkUrl
-                  resolve:(RCTPromiseResolveBlock)resolve
+RCT_EXTERN_METHOD(getEvent:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(getAlbums:(NSString *) type
