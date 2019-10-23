@@ -3,6 +3,7 @@ package com.reactlibrary;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -42,24 +43,23 @@ class GetAlbums extends AsyncTask<Void, Void, Void> {
         List<WritableMap> AlbumListArray = new ArrayList();
         List<String> AlbumNameArray = new ArrayList<String>();
 
-
         final String countColumn = "COUNT(*)";
         final String[] projection = {MediaStore.Images.Media.BUCKET_ID, MediaStore.Images.Media.BUCKET_DISPLAY_NAME, countColumn};
-        String selection = null;
+        final String bucketGroupBy =  "1) GROUP BY 1,(2";
+        Uri contentUri  = null;
         if(mType.equals("Photos")){
-            selection = MediaStore.Files.FileColumns.MEDIA_TYPE + " == " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + ") /*";
+            contentUri =  MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
         }else if (mType.equals("Videos")){
-           selection = MediaStore.Files.FileColumns.MEDIA_TYPE + " == " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO + ") /*";
+            contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
         }
 
-        try (Cursor albums = mContext.getContentResolver().query(
-                MediaStore.Files.getContentUri("external"),
+        try {
+                Cursor albums = mContext.getContentResolver().query(
+                contentUri,
                 projection,
-                selection,
+                bucketGroupBy,
                 null,
-                "*/ GROUP BY " + MediaStore.Images.Media.BUCKET_ID +
-                        " ORDER BY " + MediaStore.Images.Media.BUCKET_DISPLAY_NAME)) {
-
+                "");
             if (albums == null) {
                 mPromise.reject("ERROR_UNABLE_TO_LOAD", "Could not get albums. Query returns null.");
             }
