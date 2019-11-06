@@ -14,7 +14,9 @@ import Photos
 @objc(RNCameraRollMedia)
 class RNCameraRollMedia: NSObject {
     
-    
+    @objc static func requiresMainQueueSetup() -> Bool {
+    return false
+    }  
     
     @objc func getEvent(_ resolve: @escaping RCTPromiseResolveBlock,
                         rejecter reject: @escaping RCTPromiseRejectBlock ) -> Void {
