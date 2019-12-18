@@ -6,8 +6,17 @@ import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import android.media.ExifInterface;
 
+import android.Manifest;
+import android.annotation.TargetApi;
+import android.app.Activity;
+import android.app.AlertDialog;
+import androidx.arch.core.util.Function;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.media.ExifInterface;
+import android.os.Process;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
@@ -15,43 +24,42 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
-import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
+import android.provider.Settings;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
-import android.content.ContentResolver;
-import android.widget.ImageView;
+import android.util.SparseArray;
 
 import com.facebook.common.logging.FLog;
 import com.facebook.react.bridge.GuardedAsyncTask;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeArray;
 import com.facebook.react.bridge.WritableNativeMap;
 import com.facebook.react.common.ReactConstants;
+import com.facebook.react.modules.core.PermissionAwareActivity;
+import com.facebook.react.modules.core.PermissionListener;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import javax.annotation.Nullable;
 
-public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
+public class RNCameraRollMediaModule extends ReactContextBaseJavaModule implements PermissionListener {
 
     public static final String NAME = "RNCameraRollMedia";
 
@@ -62,6 +70,19 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
     private static final String ASSET_TYPE_PHOTOS = "Photos";
     private static final String ASSET_TYPE_VIDEOS = "Videos";
+
+
+
+    private static final String ERROR_INVALID_ACTIVITY = "E_INVALID_ACTIVITY";
+    private final SparseArray<Callback> mCallbacks;
+    private int mRequestCode = 0;
+    private final String GRANTED = "granted";
+    private final String DENIED = "denied";
+    private final String NEVER_ASK_AGAIN = "never_ask_again";
+
+    public interface MyRunnable extends Runnable {
+        public void run(String result);
+    }
 
     private static final String[] PROJECTION = {
             Images.Media._ID,
@@ -79,12 +100,16 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     private static final String SELECTION_DATE_TAKEN = Images.Media.DATE_TAKEN + " < ?";
     private static final String SELECTION_DATE_TAKEN_BEFORE = Images.Media.DATE_TAKEN + " > ?";
 
+    private Promise mPermissionPromise;
+    private String packageName;
 
     private final ReactApplicationContext reactContext;
 
     public RNCameraRollMediaModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        packageName = this.reactContext.getPackageName();
+        mCallbacks = new SparseArray<Callback>();
     }
 
     @Override
@@ -95,21 +120,61 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void fetchAssets(final ReadableMap params, final Promise promise) {
-        String first = params.hasKey("first") ? params.getString("first") : null;
-        int count = params.hasKey("count") ? params.getInt("count") : 120;
-        String after = params.hasKey("after") ? params.getString("after") : null;
-        String assetType = params.hasKey("assetType") ? params.getString("assetType") : ASSET_TYPE_PHOTOS;
-        String albumName = params.hasKey("title") ? params.getString("title") : null;
-        new GetMediaTask(
-                getReactApplicationContext(),
-                albumName,
-                count,
-                first,
-                after,
-                assetType,
-                promise)
-                .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        if(checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)){
+            fetchassetFunc(params,promise);
+        } else {
+
+            requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, mPermissionPromise, new MyRunnable() {
+
+                @Override
+                public void run(String result) {
+                    // TODO Auto-generated method stub
+                    if(result== GRANTED){
+                        fetchassetFunc(params,promise);
+                    } else if(result== NEVER_ASK_AGAIN){
+                        WritableMap Alb = new WritableNativeMap();
+                        Alb.putString("error", "1");
+                        promise.resolve(Alb);
+                    } else if(result== DENIED){
+                        WritableMap Alb = new WritableNativeMap();
+                        Alb.putString("error", "0");
+                        promise.resolve(Alb);
+                    }
+                }
+
+                @Override
+                public void run() {
+                    // TODO Auto-generated method stub
+
+                }
+            });
+        }
+
+        // do your task.
     }
+
+    @ReactMethod
+    public void getBase64(final String linkUrl, final Promise promise) {
+        try {
+            URL imageUrl = new URL(linkUrl);
+            URLConnection ucon = imageUrl.openConnection();
+            InputStream is = ucon.getInputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int read = 0;
+            while ((read = is.read(buffer, 0, buffer.length)) != -1) {
+                baos.write(buffer, 0, read);
+            }
+            baos.flush();
+            promise.resolve(Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT));
+            return;
+        } catch (Exception e) {
+            Log.d("Error", e.toString());
+        }
+        promise.resolve("null");
+
+    }
+
 
     @ReactMethod
     public void getSize(String uri, final Promise promise) {
@@ -145,10 +210,6 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
                 }
 
             }
-
-
-
-
             WritableMap map = Arguments.createMap();
 
             map.putInt("height", height);
@@ -162,9 +223,55 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getAlbums(final String type, final Promise promise) {
-        new GetAlbums(type, getReactApplicationContext(), promise).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        if(checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)){
+            new GetAlbums(type, getReactApplicationContext(), promise).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        } else {
+
+            requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, mPermissionPromise, new MyRunnable() {
+
+                @Override
+                public void run(String result) {
+                    // TODO Auto-generated method stub
+                    if(result== GRANTED){
+                        new GetAlbums(type, getReactApplicationContext(), promise).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                    } else if(result== NEVER_ASK_AGAIN){
+                        WritableMap Alb = new WritableNativeMap();
+                        Alb.putString("error", "1");
+                        promise.resolve(Alb);
+                    } else if(result== DENIED){
+                        WritableMap Alb = new WritableNativeMap();
+                        Alb.putString("error", "0");
+                        promise.resolve(Alb);
+                    }
+                }
+
+                @Override
+                public void run() {
+                    // TODO Auto-generated method stub
+
+                }
+            });
+        }
+
+
     }
 
+    private void fetchassetFunc(final ReadableMap params, final Promise promise){
+        String first = params.hasKey("first") ? params.getString("first") : null;
+        int count = params.hasKey("count") ? params.getInt("count") : 120;
+        String after = params.hasKey("after") ? params.getString("after") : null;
+        String assetType = params.hasKey("assetType") ? params.getString("assetType") : ASSET_TYPE_PHOTOS;
+        String albumName = params.hasKey("title") ? params.getString("title") : null;
+        new GetMediaTask(
+                getReactApplicationContext(),
+                albumName,
+                count,
+                first,
+                after,
+                assetType,
+                promise)
+                .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
 
 
     private static class GetMediaTask extends GuardedAsyncTask<Void, Void> {
@@ -505,6 +612,16 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
     }
 
 
+
+//    private boolean hasPermissions(Context ctx) {
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//            int result = (int) ContextCompat.checkSelfPermission(ctx, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+//            return result == PackageManager.PERMISSION_GRANTED;
+//        } else {
+//            return true;
+//        }
+//    }
+
     public static int getOrientation(ExifInterface exif) {
         int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
         switch (orientation) {
@@ -519,4 +636,194 @@ public class RNCameraRollMediaModule extends ReactContextBaseJavaModule {
         }
     }
 
+
+
+
+    // ##############################
+    // ##############################
+    // ##############################
+
+    public boolean checkPermission(final String permission) {
+        Context context = getReactApplicationContext().getBaseContext();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true;
+        }
+        return (context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED);
+    }
+
+    /**
+     * Check whether the app should display a message explaining why a certain permission is needed.
+     * successCallback is called with true if the app should display a message, false otherwise. This
+     * message is only displayed if the user has revoked this permission once before, and if the
+     * permission dialog will be shown to the user (the user can choose to not be shown that dialog
+     * again). For devices before Android M, this always returns false. See {@link
+     * Activity#shouldShowRequestPermissionRationale}.
+     */
+    public void shouldShowRequestPermissionRationale(final String permission, final Promise promise) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            promise.resolve(false);
+            return;
+        }
+        try {
+            promise.resolve(
+                    getPermissionAwareActivity().shouldShowRequestPermissionRationale(permission));
+        } catch (IllegalStateException e) {
+            promise.reject(ERROR_INVALID_ACTIVITY, e);
+        }
+    }
+
+    /**
+     * Request the given permission. successCallback is called with GRANTED if the permission had been
+     * granted, DENIED or NEVER_ASK_AGAIN otherwise. For devices before Android M, this checks if the
+     * user has the permission given or not and resolves with GRANTED or DENIED. See {@link
+     * Activity#checkSelfPermission}.
+     */
+
+    public void requestPermission(final String permission, final Promise promise, final MyRunnable Func) {
+        Context context = getReactApplicationContext().getBaseContext();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            Func.run(GRANTED);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+            Func.run(GRANTED);
+        }
+
+        try {
+            PermissionAwareActivity activity = getPermissionAwareActivity();
+            mCallbacks.put(
+                    mRequestCode,
+                    new Callback() {
+                        @Override
+                        public void invoke(Object... args) {
+                            int[] results = (int[]) args[0];
+                            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+                                Func.run(GRANTED);
+                            } else {
+                                PermissionAwareActivity activity = (PermissionAwareActivity) args[1];
+                                if (activity.shouldShowRequestPermissionRationale(permission)) {
+                                    Func.run(DENIED);
+                                } else {
+                                    Func.run(NEVER_ASK_AGAIN);
+                                    AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
+                                            getCurrentActivity());
+                                    alertDialogBuilder.setTitle("Permission Request");
+                                    alertDialogBuilder
+                                            .setMessage("Please, Allow Storage Permission Access!")
+                                            .setCancelable(false)
+                                            .setPositiveButton("Open Settings",new DialogInterface.OnClickListener() {
+                                                public void onClick(DialogInterface dialog,int id) {
+                                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                                    intent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+                                                    intent.setData(Uri.parse("package:" + reactContext.getPackageName()));
+                                                    if (intent.resolveActivity(reactContext.getPackageManager()) != null) {
+                                                        reactContext.startActivity(intent);
+                                                    }
+                                                }
+                                            })
+                                            .setNegativeButton("CANCEL",new DialogInterface.OnClickListener() {
+                                                public void onClick(DialogInterface dialog, int id) {
+                                                    dialog.cancel();
+                                                }
+                                            });
+                                    AlertDialog alertDialog = alertDialogBuilder.create();
+                                    alertDialog.show();
+
+
+                                }
+                            }
+                        }
+                    });
+
+            activity.requestPermissions(new String[] {permission}, mRequestCode, this);
+            mRequestCode++;
+        } catch (IllegalStateException e) {
+            promise.reject(ERROR_INVALID_ACTIVITY, e);
+        }
+    }
+
+    public void requestMultiplePermissions(final ReadableArray permissions, final Promise promise) {
+        final WritableMap grantedPermissions = new WritableNativeMap();
+        final ArrayList<String> permissionsToCheck = new ArrayList<String>();
+        int checkedPermissionsCount = 0;
+
+        Context context = getReactApplicationContext().getBaseContext();
+
+        for (int i = 0; i < permissions.size(); i++) {
+            String perm = permissions.getString(i);
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                grantedPermissions.putString(
+                        perm,
+                        context.checkPermission(perm, Process.myPid(), Process.myUid())
+                                == PackageManager.PERMISSION_GRANTED
+                                ? GRANTED
+                                : DENIED);
+                checkedPermissionsCount++;
+            } else if (context.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED) {
+                grantedPermissions.putString(perm, GRANTED);
+                checkedPermissionsCount++;
+            } else {
+                permissionsToCheck.add(perm);
+            }
+        }
+        if (permissions.size() == checkedPermissionsCount) {
+            promise.resolve(grantedPermissions);
+            return;
+        }
+        try {
+
+            PermissionAwareActivity activity = getPermissionAwareActivity();
+
+            mCallbacks.put(
+                    mRequestCode,
+                    new Callback() {
+                        @Override
+                        public void invoke(Object... args) {
+                            int[] results = (int[]) args[0];
+                            PermissionAwareActivity activity = (PermissionAwareActivity) args[1];
+                            for (int j = 0; j < permissionsToCheck.size(); j++) {
+                                String permission = permissionsToCheck.get(j);
+                                if (results.length > 0 && results[j] == PackageManager.PERMISSION_GRANTED) {
+                                    grantedPermissions.putString(permission, GRANTED);
+                                } else {
+                                    if (activity.shouldShowRequestPermissionRationale(permission)) {
+                                        grantedPermissions.putString(permission, DENIED);
+                                    } else {
+                                        grantedPermissions.putString(permission, NEVER_ASK_AGAIN);
+                                    }
+                                }
+                            }
+                            promise.resolve(grantedPermissions);
+                        }
+                    });
+
+            activity.requestPermissions(permissionsToCheck.toArray(new String[0]), mRequestCode, this);
+            mRequestCode++;
+        } catch (IllegalStateException e) {
+            promise.reject(ERROR_INVALID_ACTIVITY, e);
+        }
+    }
+
+    /** Method called by the activity with the result of the permission request. */
+    @Override
+    public boolean onRequestPermissionsResult(
+            int requestCode, String[] permissions, int[] grantResults) {
+        mCallbacks.get(requestCode).invoke(grantResults, getPermissionAwareActivity());
+        mCallbacks.remove(requestCode);
+        return mCallbacks.size() == 0;
+    }
+
+    private PermissionAwareActivity getPermissionAwareActivity() {
+        Activity activity = getCurrentActivity();
+        if (activity == null) {
+            throw new IllegalStateException(
+                    "Tried to use permissions API while not attached to an " + "Activity.");
+        } else if (!(activity instanceof PermissionAwareActivity)) {
+            throw new IllegalStateException(
+                    "Tried to use permissions API but the host Activity doesn't"
+                            + " implement PermissionAwareActivity.");
+        }
+        return (PermissionAwareActivity) activity;
+    }
 }
